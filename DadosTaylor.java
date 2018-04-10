@@ -16,7 +16,7 @@ public class DadosTaylor extends Thread {
 	/*
 	 * Construtor padrao
 	 */
-	public DadosTaylor(){
+	public DadosTaylor(int x){
 		this.inicio = BigInteger.ZERO;
 		this.fim = BigInteger.ZERO;
 		resultado = BigDecimal.ZERO;
@@ -109,7 +109,7 @@ public class DadosTaylor extends Thread {
 
         //cria as threads
         for(int j = 0; j < numThreads; j++) 
-            threads[j] = new DadosTaylor();
+            threads[j] = new DadosTaylor(x);
         
         tempo1 = System.nanoTime();
         
