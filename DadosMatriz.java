@@ -1,35 +1,49 @@
 import java.util.Random;
 import java.util.Scanner;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Vector;
 
 public class DadosMatriz extends Thread {
 
-	private static int m1[][];
-	private static int m2[][];
-	private static int m3[][];
-	private static int l1;
-	private static int c1;
-	private static int l2;
-	private static int c2;
-	private static int l3;
-	private static int c3;
+	private static int m1[][]; //Matriz 1
+	private static int m2[][]; //Matriz 2
+	private static int m3[][]; //Matriz 3
+    //m3 = m1 * m2
+	private static int l1; //Total linhas m1
+	private static int c1; //Total colunas m1
+	private static int l2; //Total linhas m2
+	private static int c2; //Total colunas m2
+	private static int l3; //Total linhas m3
+	private static int c3; //Total colunas m3
 
-	private int l_ini;
-	private int l_fim;
-	private int c_ini;
-	private int c_fim;
+	private Map<Integer, Vector<Integer>> mapI; //HashMap contendo linhas e colunas que a trhead vai operar
 
-	public DadosMatriz(int li, int lf, int ci, int cf){
-		this.l_ini = li;
-		this.l_fim = lf;
-		this.c_ini = ci;
-		this.c_fim = cf;
+	public DadosMatriz(){
+		this.mapI = new HashMap<Integer, Vector<Integer>>();
 	}
 
-	public String getIntervalos(){
-		return  this.l_ini+":"+this.l_fim+" - "+this.c_ini+":"+this.c_fim;
+	public void addIntervalo(int linha, int coluna){ //Adiciona par linha-coluna para o conjunto da thread 
+		try{ //Tenta adicionar coluna para determinada linha
+			mapI.get(linha).add(coluna); 
+		}catch(Exception e){ //Se a linha ainda não existe adiciona linha e coluna
+			mapI.put(linha, new Vector<Integer>());
+			mapI.get(linha).add(coluna);
+		}
 	}
 
-	public static void iniciaMatrizes(int _l1, int _c1, int _l2, int _c2){
+	public void getIntervalos(){ //Imprime os intervalos calculados
+		for (Integer key : this.mapI.keySet()) {
+			Vector<Integer> value = this.mapI.get(key);
+			System.out.print(key+": ");
+			for(Integer index : value){
+				System.out.print(index + " ");
+			}
+			System.out.println();
+	 	}
+	}
+
+	public static void iniciaMatrizes(int _l1, int _c1, int _l2, int _c2){ //Inicia as matrizes de forma randomica
 		l1 = _l1;
 		c1 = _c1;
 		l2 = _l2;
@@ -59,7 +73,7 @@ public class DadosMatriz extends Thread {
 		}
 	}
 
-	public static void imprimeMatriz(){
+	public static void imprimeMatriz(){ //Imprime as matrizes geradas
 		System.out.println("M1: ");
 		for(int i=0; i<l1; ++i){
 			for(int j=0; j<c1; ++j){
@@ -85,47 +99,32 @@ public class DadosMatriz extends Thread {
 		}	
 	} 
 
-	public static void defineIntervalos(DadosMatriz[] threads, int nThreads){
-		if(nThreads <= l1){
-			int passo = l1/nThreads;
-			int li = 0; 
-			int lf = passo-1;
+	public static void defineIntervalos(DadosMatriz[] threads, int nThreads){ //Distribui linhas e colunas para cada thread
+		for(int i=0; i<nThreads; ++i){ //Inicializa estrutura de cada thread
+			threads[i] = new DadosMatriz();
+		}
 
-			for(int i=0; i<nThreads-1; ++i){
-				threads[i] = new DadosMatriz(li, lf, 0, c2-1);
-				li+=passo; 
-				lf+=passo;
-			}
-
-			threads[nThreads-1] = new DadosMatriz(li, lf+l1%nThreads, 0, c2-1);
-		}else{
-			int passo = (c2*l1)/nThreads;
-			int linha = 0;
-			int ci = 0;
-			int cf = passo-1;
-
-			for(int i=0; i<nThreads-1; ++i){
-				threads[i] = new DadosMatriz(linha, linha, ci, cf);
+		int totalOp = l1 * c2;
+		int linha=0;
+		int coluna=0;
+		int thrd = 0;
+		for(int i=0; i<totalOp; ++i){////Distribui linhas e colunas para cada thread
+			threads[thrd].addIntervalo(linha, coluna);
+			thrd++; if(thrd>=nThreads)thrd=0;
+			coluna++;
+			if(coluna >= c2){
+				coluna = 0;
 				linha++;
-				if(linha >= l1){
-					linha=0;
-					ci+=passo;
-					cf+=passo;
-					if(cf>=c2){
-						ci=0; cf=passo-1;
-					}
-				}
 			}
-
-			threads[nThreads-1] = new DadosMatriz(linha, linha, ci, cf+(c2*l1)%nThreads);
 		}
 	}
 
-	public void run(){
-		for(int i=l_ini; i<=l_fim; ++i){
-			for(int j=c_ini; j<=c_fim; ++j){
+	public void run(){//Realiza o somatario de produto entre linhas e colunas determinadas para a thread
+		for(Integer linha : this.mapI.keySet()){
+			Vector<Integer> cols = this.mapI.get(linha);
+			for(Integer coluna : cols){
 				for(int k=0; k<c1; ++k){
-					m3[i][j] += m1[i][k]*m2[k][j];
+					m3[linha][coluna] += m1[linha][k]*m2[k][coluna];
 				}
 			}
 		}
@@ -149,13 +148,16 @@ public class DadosMatriz extends Thread {
 		nThreads = teclado.nextInt();
 		teclado.close();
 
-		DadosMatriz[] threads = new DadosMatriz[nThreads];
+		DadosMatriz[] threads = new DadosMatriz[nThreads]; //Vetor de threads
 
-		DadosMatriz.iniciaMatrizes(l1, c1, l2, c2);
-		DadosMatriz.defineIntervalos(threads, nThreads);
+		DadosMatriz.iniciaMatrizes(l1, c1, l2, c2); //Inicialização das matrizes
+		DadosMatriz.defineIntervalos(threads, nThreads); //Define os intervalos de cada thread
 
+		//Imprime os intervalos gerados
 		for(int i=0; i<nThreads; ++i){
-			System.out.println("Trhead "+i+": " + threads[i].getIntervalos());
+			System.out.println("Thread "+ i +": ");
+			threads[i].getIntervalos();
+			System.out.println();
 		}
 
 		for(DadosMatriz index:threads){
